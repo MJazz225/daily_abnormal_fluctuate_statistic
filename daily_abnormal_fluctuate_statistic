@@ -1,0 +1,78 @@
+#########################################################################
+#
+# made by Marshaw
+#
+# excel的起始日期是1899-12-30
+#
+# 最新更新：11/1/2024
+# 每天异常涨跌幅的量，多少个币，哪一个币种
+#
+#######################################################################
+
+rm(list=ls())
+
+library(readxl)
+library(dplyr)
+library(openxlsx)
+library(officer)
+library(flextable)
+library(readxl)
+
+#########################################   导入资料   ########################################################################
+##验证的资料
+wb <- loadWorkbook("Downloads/异常涨跌幅12月1日-12月31日.xlsx") 
+sheet_names <- names(wb)
+data_check <- read.xlsx(wb, sheet = 2) 
+
+data_check <- data_check[order(-as.numeric(data_check$买卖金额差),decreasing = T), ]
+chufa_time <- as.POSIXct(data_check$触发时间 %>% unlist(), tz = "UTC", format = "%Y-%m-%d") %>% as.data.frame()
+colnames(chufa_time) <- "触发日期"
+data_check <- cbind(data_check, chufa_time)
+#data1 <- data_check[c(1:429),]
+date_list <- split(data_check, f = data_check$触发日期)
+
+data2 <- NULL
+for (i in 1:length(date_list)) {
+  cat(i,"/",length(date_list), "\n")
+  
+  tem <- date_list[[i]]
+  unique_crypto <- unique(tem$交易对)
+  count_crypto <- length(unique_crypto)
+  unique_crypto <- paste(unique_crypto, collapse = ", ")
+  count_tem <- nrow(tem)
+  date_chufa <- tem$触发日期 %>% unique()
+  temdata <- cbind(date_chufa, count_tem, count_crypto, unique_crypto)
+  data2 <- rbind(data2, temdata)
+}
+
+date1 <- names(date_list)
+data2 <- as.data.frame(data2)
+data2 <- cbind(date1, data2[,c(2:4)])
+colnames(data2) <- c("日期", "命中次数", "命中币对计数","命中币对名称")
+total_name_crypto <- unique(data_check$交易对)
+total_count_crypto <- length(total_name_crypto)
+total_name_crypto <- paste(total_name_crypto, collapse = ", ")
+total_name_crypto <- unique(total_name_crypto)
+
+sum_chufa <- sum(data2$命中次数 %>% as.numeric())
+total1 <- cbind("总数", sum_chufa, total_count_crypto, total_name_crypto)
+colnames(total1) <- c("日期", "命中次数", "命中币对计数","命中币对名称")
+data2 <- rbind(data2, total1)
+
+wb <- createWorkbook()
+addWorksheet(wb, "异常涨跌幅12月统计")
+writeData(wb, "异常涨跌幅12月统计", data2)
+# 保存 Excel 文件
+saveWorkbook(wb, "Downloads/异常涨跌幅12月统计.xlsx", overwrite = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
